@@ -1,11 +1,19 @@
 class ArticlesController < ApplicationController
+  before_action :set_article, only: %i[show edit update destroy]  #antes de rodar uma action (show,edit,update)
+  # only onde vai ser executado em show,edit,update,destroy.
+
   def index
-    @articles = Article.all
+    @highlights = Article.desc_order.first(3)
+
+    current_page = (params[:page] || 1).to_i
+    highlight_ids = @highlights.pluck(:id).join(',')
+
+    @articles = Article.without_hightlights(highlight_ids)
+                       .desc_order
+                       .page(current_page)
   end
 
-  def show
-    @article = Article.find(params[:id])
-  end
+  def show; end
 
   def new
     @article = Article.new
@@ -22,12 +30,9 @@ class ArticlesController < ApplicationController
   end
 
   def edit
-    @article = Article.find(params[:id])
   end
 
   def update
-    @article = Article.find(params[:id])
-
     if @article.update(article_params)
       redirect_to @article
     else
@@ -35,10 +40,20 @@ class ArticlesController < ApplicationController
     end
   end
 
+  def destroy
+    @article.destroy
+
+    redirect_to root_path            #retornar para o index
+  end
+
   private
 
   def article_params
     params.require(:article).permit(:title, :body)
+  end
+
+  def set_article
+    @article = Article.find(params[:id])
 
   end
 end
