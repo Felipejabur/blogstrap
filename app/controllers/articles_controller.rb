@@ -1,26 +1,33 @@
 class ArticlesController < ApplicationController
-  before_action :set_article, only: %i[show edit update destroy]  #antes de rodar uma action (show,edit,update)
-  # only onde vai ser executado em show,edit,update,destroy.
+  include Paginable
+  before_action :authenticate_user!, except: %i[index show]
+  before_action :set_article, only: %i[show edit update destroy]
 
   def index
-    @highlights = Article.desc_order.first(3)
+    category = Category.find_by_name(params[:category]) if params[:category].present?
 
-    current_page = (params[:page] || 1).to_i
+    @highlights = Article.filter_by_category(category)
+                         .desc_order
+                         .first(3)
+
     highlight_ids = @highlights.pluck(:id).join(',')
 
     @articles = Article.without_hightlights(highlight_ids)
+                       .filter_by_category(category)
                        .desc_order
                        .page(current_page)
+
+    @categories = Category.sorted
   end
 
   def show; end
 
   def new
-    @article = Article.new
+    @article = current_user.articles.new
   end
 
   def create
-    @article = Article.new(article_params)
+    @article = current_user.articles.new(article_params)
 
     if @article.save
       redirect_to @article, notice: 'Article was successfully created.'
@@ -54,6 +61,7 @@ class ArticlesController < ApplicationController
 
   def set_article
     @article = Article.find(params[:id])
+    authorize @article
 
   end
 end
